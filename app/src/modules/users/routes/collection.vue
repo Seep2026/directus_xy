@@ -32,7 +32,7 @@ const props = defineProps<{ role?: string; status?: string }>();
 
 const { role } = toRefs(props);
 
-const { t } = useI18n();
+const { t, te } = useI18n();
 const { roles } = useNavigation(role);
 const userInviteModalActive = ref(false);
 const serverStore = useServerStore();
@@ -179,7 +179,12 @@ function useBreadcrumb() {
 	});
 
 	const title = computed(() => {
-		if (props.status) return t(`${props.status}_users`);
+		if (props.status) {
+			const statusUsersKey = `${props.status}_users`;
+			if (te(statusUsersKey)) return t(statusUsersKey);
+			if (te(props.status)) return `${t(props.status)}${t('users')}`;
+			return props.status;
+		}
 		if (!props.role) return t('all_users');
 		return roles.value?.find((role) => role.id === props.role)?.name;
 	});
@@ -191,6 +196,12 @@ function clearFilters() {
 	filter.value = null;
 	search.value = null;
 }
+
+const localizedStatus = computed(() => {
+	if (!props.status) return '';
+	if (te(props.status)) return t(props.status);
+	return props.status;
+});
 </script>
 
 <template>
@@ -280,7 +291,7 @@ function clearFilters() {
 			<component :is="`layout-${layout}`" v-bind="layoutState">
 				<template #no-results>
 					<VInfo v-if="!filter && !search" :title="$t('user_count', 0)" icon="people_alt" center>
-						{{ status ? $t('no_status_users_copy', { status }) : $t('no_users_copy') }}
+						{{ status ? $t('no_status_users_copy', { status: localizedStatus }) : $t('no_users_copy') }}
 
 						<template v-if="canInviteUsers && (!status || status === 'active')" #append>
 							<VButton :to="role ? { path: `/users/roles/${role}/+` } : { path: '/users/+' }">
@@ -300,7 +311,7 @@ function clearFilters() {
 
 				<template #no-items>
 					<VInfo v-if="!layoutState.loadingItemCount" :title="$t('user_count', 0)" icon="people_alt" center>
-						{{ status ? $t('no_status_users_copy', { status }) : $t('no_users_copy') }}
+						{{ status ? $t('no_status_users_copy', { status: localizedStatus }) : $t('no_users_copy') }}
 
 						<template v-if="canInviteUsers && (!status || status === 'active')" #append>
 							<VButton :to="role ? { path: `/users/roles/${role}/+` } : { path: '/users/+' }">

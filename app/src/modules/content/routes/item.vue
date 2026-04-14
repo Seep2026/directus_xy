@@ -3,8 +3,26 @@ import { translateShortcut, useCollection, useShortcut } from '@directus/composa
 import type { PrimaryKey } from '@directus/types';
 import { SplitPanel } from '@directus/vue-split-panel';
 import { useHead } from '@unhead/vue';
-import { useBreakpoints, useEventListener, useLocalStorage, useScroll } from '@vueuse/core';
-import { type ComponentPublicInstance, computed, onBeforeUnmount, provide, ref, toRefs, unref, watch } from 'vue';
+import {
+	useBreakpoints,
+	useElementSize,
+	useEventListener,
+	useLocalStorage,
+	useScroll,
+	useWindowSize,
+} from '@vueuse/core';
+import {
+	type ComponentPublicInstance,
+	computed,
+	inject,
+	onBeforeUnmount,
+	provide,
+	type Ref,
+	ref,
+	toRefs,
+	unref,
+	watch,
+} from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import ContentNavigation from '../components/navigation.vue';
@@ -38,6 +56,7 @@ import { useVersions } from '@/composables/use-versions';
 import { useVisualEditing } from '@/composables/use-visual-editing';
 import { BREAKPOINTS } from '@/constants';
 import { sameOrigin } from '@/modules/visual/utils/same-origin';
+import { isNewMediaCollection, NEW_MEDIA_PRODUCT_TITLE } from '@/new-media/config';
 import { useUserStore } from '@/stores/user';
 import { getCollectionRoute, getItemRoute } from '@/utils/get-route';
 import { renderStringTemplate } from '@/utils/render-string-template';
@@ -73,6 +92,10 @@ const { collectionRoute, backRoute } = useItemNavigation();
 const userStore = useUserStore();
 
 const form = ref<ComponentPublicInstance>();
+const mainElement = inject<Ref<Element | undefined>>('main-element', ref<Element>());
+const { width: mainElementWidth } = useElementSize(mainElement);
+const { width: windowWidth } = useWindowSize();
+const visualViewportWidth = ref(0);
 
 const scrollParent = computed(() => form.value?.$el?.parentElement);
 const { y: formScrollY } = useScroll(scrollParent);
@@ -80,6 +103,82 @@ const showHeaderShadow = computed(() => formScrollY.value > 0);
 
 const { collection, primaryKey } = toRefs(props);
 const { breadcrumb } = useBreadcrumb();
+const isNewMediaContentCard = computed(() => collection.value === 'nm_content_cards');
+
+function readVisualViewportWidth() {
+	if (typeof window === 'undefined') return;
+	visualViewportWidth.value = Math.round(window.visualViewport?.width ?? window.innerWidth);
+}
+
+readVisualViewportWidth();
+
+if (typeof window !== 'undefined') {
+	useEventListener(window, 'resize', readVisualViewportWidth);
+	if (window.visualViewport) {
+		useEventListener(window.visualViewport, 'resize', readVisualViewportWidth);
+	}
+}
+
+const browserDisplayProfile = computed(() => {
+	const viewportWidth = Math.round(visualViewportWidth.value || windowWidth.value || 0);
+	const containerWidth = Math.round(mainElementWidth.value || 0);
+	const effectiveWidth = containerWidth > 0 ? Math.min(containerWidth, viewportWidth || containerWidth) : viewportWidth;
+	const screenAvailableWidth =
+		typeof window === 'undefined' ? 0 : Math.round(window.screen?.availWidth ?? window.screen?.width ?? 0);
+	const devicePixelRatio = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
+
+	return {
+		viewportWidth,
+		containerWidth,
+		effectiveWidth,
+		screenAvailableWidth,
+		devicePixelRatio,
+	};
+});
+
+const contentCardFormMaxInlineSize = computed(() => {
+	if (!isNewMediaContentCard.value) return null;
+
+	const { effectiveWidth, screenAvailableWidth, devicePixelRatio } = browserDisplayProfile.value;
+	if (!effectiveWidth || effectiveWidth <= 0) return '1120px';
+
+	const ratio =
+		effectiveWidth >= 1920
+			? 0.76
+			: effectiveWidth >= 1600
+				? 0.8
+				: effectiveWidth >= 1440
+					? 0.84
+					: effectiveWidth >= 1280
+						? 0.88
+						: 0.94;
+
+	const cssViewportEstimate =
+		screenAvailableWidth > 0 && devicePixelRatio > 0
+			? Math.round(screenAvailableWidth / devicePixelRatio)
+			: effectiveWidth;
+
+	const hardCap =
+		cssViewportEstimate >= 1900 ? 1320 : cssViewportEstimate >= 1600 ? 1240 : cssViewportEstimate >= 1400 ? 1160 : 1080;
+
+	const targetWidth = Math.round(effectiveWidth * ratio);
+	const boundedWidth = Math.min(hardCap, targetWidth, Math.max(900, effectiveWidth - 32));
+	const finalWidth = Math.max(760, boundedWidth);
+
+	return `${finalWidth}px`;
+});
+
+const contentCardFormShellStyle = computed<Record<string, string> | undefined>(() => {
+	if (!isNewMediaContentCard.value || !contentCardFormMaxInlineSize.value) return undefined;
+
+	const maxInlineSize = contentCardFormMaxInlineSize.value;
+
+	return {
+		inlineSize: `min(100%, ${maxInlineSize})`,
+		maxInlineSize,
+		marginInline: 'auto',
+	};
+});
 
 const revisionsSidebarDetailRef = ref<InstanceType<typeof RevisionsSidebarDetail> | null>(null);
 
@@ -171,6 +270,10 @@ const title = computed(() => {
 
 useHead({
 	title: () => {
+		if (isNewMediaCollection(collection.value)) {
+			return NEW_MEDIA_PRODUCT_TITLE;
+		}
+
 		const tabTitle = (collectionInfo.value?.name || '') + ' | ';
 
 		if (collectionInfo.value && collectionInfo.value.meta) {
@@ -645,7 +748,7 @@ function useItemNavigation() {
 
 	<PrivateView
 		v-else
-		:class="{ 'has-content-versioning': shouldShowVersioning }"
+		:class="{ 'has-content-versioning': shouldShowVersioning, 'full-title-display': true }"
 		:title
 		:show-back="!collectionInfo.meta?.singleton"
 		:back-to="backRoute"
@@ -667,6 +770,12 @@ function useItemNavigation() {
 					:item="templateData"
 					:template="collectionInfo.meta!.display_template"
 				/>
+			</h1>
+		</template>
+
+		<template v-else #title>
+			<h1 class="type-title">
+				{{ title }}
 			</h1>
 		</template>
 
@@ -873,20 +982,22 @@ function useItemNavigation() {
 			:disabled="isMobile"
 		>
 			<template #start>
-				<VForm
-					ref="form"
-					v-model="edits"
-					:autofocus="isNew"
-					:disabled="isFormDisabled"
-					:loading="loading"
-					:initial-values="item"
-					:fields="fields"
-					:primary-key="internalPrimaryKey"
-					:collab-context="collabContext"
-					:validation-errors="validationErrors"
-					:version="currentVersion"
-					:direction="userStore.textDirection"
-				/>
+				<div :class="{ 'new-media-content-card-form-shell': isNewMediaContentCard }" :style="contentCardFormShellStyle">
+					<VForm
+						ref="form"
+						v-model="edits"
+						:autofocus="isNew"
+						:disabled="isFormDisabled"
+						:loading="loading"
+						:initial-values="item"
+						:fields="fields"
+						:primary-key="internalPrimaryKey"
+						:collab-context="collabContext"
+						:validation-errors="validationErrors"
+						:version="currentVersion"
+						:direction="userStore.textDirection"
+					/>
+				</div>
 			</template>
 
 			<template #divider>
@@ -1009,12 +1120,52 @@ function useItemNavigation() {
 	padding-block: var(--content-padding) var(--content-padding-bottom);
 }
 
+.new-media-content-card-form-shell {
+	inline-size: 100%;
+}
+
 .title-loader {
 	inline-size: 14.625rem;
 }
 
 :deep(.type-title) {
 	min-inline-size: 0;
+}
+
+.full-title-display {
+	:deep(.header-bar) {
+		block-size: auto;
+		min-block-size: var(--header-bar-height);
+	}
+
+	:deep(.header-bar .primary) {
+		align-items: flex-start;
+	}
+
+	:deep(.header-bar .title-container) {
+		overflow: visible;
+	}
+
+	:deep(.header-bar .title .type-title) {
+		overflow: visible;
+		white-space: normal;
+		text-overflow: clip;
+		word-break: break-word;
+	}
+
+	:deep(.header-bar .title .type-title .render-template) {
+		display: inline;
+		block-size: auto;
+		max-inline-size: none;
+		padding-inline-end: 0;
+		overflow: visible;
+		white-space: normal;
+		text-overflow: clip;
+	}
+
+	:deep(.header-bar .title .type-title .render-template .vertical-aligner) {
+		display: none;
+	}
 }
 
 .headline-wrapper {

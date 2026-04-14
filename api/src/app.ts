@@ -79,6 +79,7 @@ import projectSchedule from './schedules/project.js';
 import retentionSchedule from './schedules/retention.js';
 import telemetrySchedule from './schedules/telemetry.js';
 import tusSchedule from './schedules/tus.js';
+import { registerNewMediaHooks } from './new-media/register-hooks.js';
 import { getConfigFromEnv } from './utils/get-config-from-env.js';
 import { Url } from './utils/url.js';
 import { validateStorage } from './utils/validate-storage.js';
@@ -129,6 +130,7 @@ export default async function createApp(): Promise<express.Application> {
 
 	await extensionManager.initialize();
 	await flowManager.initialize();
+	registerNewMediaHooks();
 
 	const app = express();
 

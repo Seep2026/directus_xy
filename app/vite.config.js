@@ -10,6 +10,24 @@ import vueDevtools from 'vite-plugin-vue-devtools';
 import { defineConfig } from 'vitest/config';
 
 const API_PATH = path.join('..', 'api');
+const appPackage = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'));
+const newMediaConfig = appPackage?.newMedia ?? {};
+const NEW_MEDIA_PRODUCT_NAME = newMediaConfig.productName ?? '新媒体内容中台';
+const NEW_MEDIA_PRODUCT_VERSION = newMediaConfig.productVersion ?? '';
+const DEFAULT_NEW_MEDIA_COLLECTION_ORDER = [
+	'nm_sources',
+	'nm_signals',
+	'nm_content_cards',
+	'nm_assets',
+	'nm_content_versions',
+];
+const NEW_MEDIA_COLLECTION_ORDER =
+	Array.isArray(newMediaConfig.collectionOrder) && newMediaConfig.collectionOrder.length > 0
+		? newMediaConfig.collectionOrder
+		: DEFAULT_NEW_MEDIA_COLLECTION_ORDER;
+const NEW_MEDIA_PRODUCT_TITLE = `${NEW_MEDIA_PRODUCT_NAME}${
+	NEW_MEDIA_PRODUCT_VERSION ? ` ${NEW_MEDIA_PRODUCT_VERSION}` : ''
+}`;
 
 /*
  * @TODO This extension path is hardcoded to the env default (./extensions). This won't work
@@ -51,6 +69,10 @@ export default defineConfig({
 	],
 	define: {
 		__VUE_I18N_LEGACY_API__: false,
+		__NEW_MEDIA_PRODUCT_NAME__: JSON.stringify(NEW_MEDIA_PRODUCT_NAME),
+		__NEW_MEDIA_PRODUCT_VERSION__: JSON.stringify(NEW_MEDIA_PRODUCT_VERSION),
+		__NEW_MEDIA_PRODUCT_TITLE__: JSON.stringify(NEW_MEDIA_PRODUCT_TITLE),
+		__NEW_MEDIA_COLLECTION_ORDER__: JSON.stringify(NEW_MEDIA_COLLECTION_ORDER),
 	},
 	resolve: {
 		alias: [{ find: '@', replacement: path.resolve(__dirname, 'src') }],

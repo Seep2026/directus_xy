@@ -3,14 +3,22 @@ import availableLanguages from './available-languages.yaml';
 import datetimeFormats from './date-formats.yaml';
 import numberFormats from './number-formats.yaml';
 import enUSBase from './translations/en-US.yaml';
+import zhCNBase from './translations/zh-CN.yaml';
+import zhCNNewMedia from '../../../scripts/new-media/i18n/zh-CN.json';
 import { RequestError } from '@/api';
+
+const zhCNMessages = {
+	...zhCNBase,
+	...zhCNNewMedia,
+};
 
 export const i18n = createI18n({
 	legacy: false,
-	locale: 'en-US',
+	locale: 'zh-CN',
 	fallbackLocale: 'en-US',
 	messages: {
 		'en-US': enUSBase,
+		'zh-CN': zhCNMessages,
 	} as I18nOptions['messages'],
 	silentTranslationWarn: true,
 	datetimeFormats,
@@ -19,7 +27,7 @@ export const i18n = createI18n({
 
 export type Language = keyof typeof availableLanguages;
 
-export const loadedLanguages: Language[] = ['en-US'];
+export const loadedLanguages: Language[] = ['en-US', 'zh-CN'];
 
 export function translateAPIError(error: RequestError | string): string {
 	const defaultMsg = i18n.global.t('unexpected_error');

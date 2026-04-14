@@ -11,6 +11,7 @@ import VButton from '@/components/v-button.vue';
 import VError from '@/components/v-error.vue';
 import VInfo from '@/components/v-info.vue';
 import VProgressCircular from '@/components/v-progress-circular.vue';
+import { NEW_MEDIA_PRODUCT_TITLE } from '@/new-media/config';
 import { useServerStore } from '@/stores/server';
 import { generateFavicon } from '@/utils/generate-favicon';
 import { getAssetUrl } from '@/utils/get-asset-url';
@@ -22,6 +23,10 @@ const userStore = useUserStore();
 const { darkMode, themeDark, themeDarkOverrides, themeLight, themeLightOverrides } = useThemeConfiguration();
 
 const { hydrating } = toRefs(appStore);
+const newMediaTitle = computed(() => {
+	const fallbackProjectName = serverStore.info?.project?.project_name ?? '新媒体内容中台';
+	return NEW_MEDIA_PRODUCT_TITLE || fallbackProjectName;
+});
 
 const brandStyleCss = computed(() => {
 	return `:root { --project-color: ${serverStore.info?.project?.project_color ?? 'var(--theme--primary)'} }`;
@@ -29,10 +34,10 @@ const brandStyleCss = computed(() => {
 
 useHead({
 	style: [{ textContent: brandStyleCss }],
-	title: 'Directus',
-	titleTemplate: '%s · %projectName',
+	title: computed(() => newMediaTitle.value),
+	titleTemplate: () => newMediaTitle.value,
 	templateParams: {
-		projectName: computed(() => serverStore.info?.project?.project_name ?? 'Directus'),
+		projectName: computed(() => newMediaTitle.value),
 	},
 	htmlAttrs: computed(() => ({
 		lang: userStore.language,

@@ -63,16 +63,22 @@ const headersWritable = useSync(props, 'headers', emit);
 
 function getClassesForHeader(header: Header) {
 	const classes: string[] = [];
+	const importance = ((header as { importance?: 'high' | 'medium' | 'low' }).importance ?? 'medium') as
+		| 'high'
+		| 'medium'
+		| 'low';
 
 	if (header.align) {
 		classes.push(`align-${header.align}`);
 	}
 
+	classes.push(`importance-${importance}`);
+
 	if (header.sortable || hasHeaderContextMenuSlot.value) {
 		classes.push('actionable');
 	}
 
-	if (header.width && header.width < 90) {
+	if (header.width && header.width < 90 && importance === 'low') {
 		classes.push('small');
 	}
 
@@ -354,6 +360,18 @@ function toggleManualSort() {
 				.action-icon {
 					margin: 0;
 				}
+			}
+		}
+
+		&.importance-high {
+			.content .header-btn .name {
+				white-space: normal;
+				text-overflow: clip;
+				word-break: break-word;
+				display: -webkit-box;
+				line-height: 1.125rem;
+				-webkit-box-orient: vertical;
+				-webkit-line-clamp: 2;
 			}
 		}
 	}

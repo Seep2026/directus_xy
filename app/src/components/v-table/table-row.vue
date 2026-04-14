@@ -66,7 +66,16 @@ function onKeydown(e: KeyboardEvent) {
 			/>
 		</td>
 
-		<td v-for="header in headers" :key="header.value" class="cell" :class="`align-${header.align}`">
+		<td
+			v-for="header in headers"
+			:key="header.value"
+			class="cell"
+			:class="[
+				`align-${header.align}`,
+				`importance-${header.importance ?? 'medium'}`,
+				{ multiline: header.multiline, priority: header.priority },
+			]"
+		>
 			<slot :name="`item.${header.value}`" :item="item">
 				<VTextOverflow
 					v-if="
@@ -114,6 +123,59 @@ function onKeydown(e: KeyboardEvent) {
 		&.select {
 			display: flex;
 			align-items: center;
+		}
+
+		&.multiline {
+			display: block;
+			white-space: normal;
+			text-overflow: clip;
+			word-break: break-word;
+			line-height: 1.25rem;
+
+			:deep(.v-text-overflow),
+			:deep(.display),
+			:deep(.display-formatted),
+			:deep(.render-template) {
+				display: -webkit-box;
+				overflow: hidden;
+				white-space: normal;
+				text-overflow: clip;
+				word-break: break-word;
+				line-height: 1.25rem;
+				-webkit-box-orient: vertical;
+				-webkit-line-clamp: 2;
+			}
+
+			:deep(.render-template) {
+				block-size: auto;
+				padding-inline-end: 0;
+			}
+
+			:deep(.render-template .vertical-aligner) {
+				display: none;
+			}
+		}
+
+		&.importance-high:not(.multiline) {
+			display: block;
+			white-space: normal;
+			text-overflow: clip;
+			word-break: break-word;
+			line-height: 1.25rem;
+
+			:deep(.v-text-overflow),
+			:deep(.display),
+			:deep(.display-formatted),
+			:deep(.render-template) {
+				display: -webkit-box;
+				overflow: hidden;
+				white-space: normal;
+				text-overflow: clip;
+				word-break: break-word;
+				line-height: 1.25rem;
+				-webkit-box-orient: vertical;
+				-webkit-line-clamp: 2;
+			}
 		}
 	}
 

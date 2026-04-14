@@ -2,7 +2,7 @@
 import { useSync } from '@directus/composables';
 import { useShortcut } from '@directus/composables';
 import type { Field, Filter, Item, ShowSelect } from '@directus/types';
-import { ComponentPublicInstance, inject, ref, Ref, toRefs, watch } from 'vue';
+import { ComponentPublicInstance, computed, inject, ref, Ref, toRefs, watch } from 'vue';
 import VDivider from '@/components/v-divider.vue';
 import VFieldList from '@/components/v-field-list/v-field-list.vue';
 import VIcon from '@/components/v-icon/v-icon.vue';
@@ -19,6 +19,7 @@ import VTable from '@/components/v-table/v-table.vue';
 import { AliasFields, useAliasFields } from '@/composables/use-alias-fields';
 import { usePageSize } from '@/composables/use-page-size';
 import { useCollectionPermissions } from '@/composables/use-permissions';
+import { isNewMediaCollection } from '@/new-media/config';
 import { Collection } from '@/types/collections';
 import RenderDisplay from '@/views/private/components/render-display.vue';
 
@@ -75,6 +76,8 @@ const emit = defineEmits(['update:selection', 'update:tableHeaders', 'update:lim
 
 const { collection } = toRefs(props);
 
+const isNewMediaCollectionView = computed(() => isNewMediaCollection(props.collection));
+
 const { sortAllowed } = useCollectionPermissions(collection);
 
 const selectionWritable = useSync(props, 'selection', emit);
@@ -124,6 +127,7 @@ function removeField(fieldKey: string) {
 <template>
 	<div class="layout-tabular">
 		<VTable
+			:class="{ 'new-media-table': isNewMediaCollectionView }"
 			v-if="loading || (items.length > 0 && !error)"
 			ref="table"
 			v-model="selectionWritable"
@@ -285,6 +289,15 @@ function removeField(fieldKey: string) {
 </template>
 
 <style lang="scss" scoped>
+.layout-tabular :deep(.v-table.new-media-table > table) {
+	min-inline-size: calc(100% - 0.75rem) !important;
+	margin-inline-start: 0.75rem;
+}
+
+.layout-tabular :deep(.v-table.new-media-table > table tr) {
+	margin-inline-end: 0.75rem;
+}
+
 .v-table {
 	--v-table-sticky-offset-top: var(--layout-offset-top);
 

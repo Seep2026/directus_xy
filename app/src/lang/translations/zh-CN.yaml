@@ -698,6 +698,7 @@ file_count: '没有文件 | 一个文件 | {count} 个文件'
 no_files_copy: 没有任何文件。
 user_count: '没有用户 | 一个用户 | {count} 个用户'
 no_users_copy: 该角色下还没有用户。
+no_status_users_copy: 当前没有状态为 {status} 的用户。
 no_notifications: 无通知
 no_notifications_copy: 你已全部搞定！
 activity_log: 活动日志
@@ -714,6 +715,8 @@ collection_field_not_setup: 该模型的字段配置错误
 select_a_collection: 选择模型
 select_a_field: 选择字段
 active: 激活
+suspended: 已停用
+invited: 已邀请
 move_to: 移动到...
 copy: 复制
 copy_to: 复制到...
@@ -839,6 +842,9 @@ flip_vertical: 垂直翻转
 aspect_ratio: 宽高比
 rotate: 旋转
 all_users: 全部用户
+active_users: 激活用户
+suspended_users: 已停用用户
+invited_users: 已邀请用户
 delete_collection: 删除模型
 update_collection_success: 模型已更新
 delete_collection_success: 模型已删除

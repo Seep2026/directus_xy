@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { isNil, orderBy } from 'lodash';
+import { isNil } from 'lodash';
 import { computed, ref, toRefs } from 'vue';
 import { useNavigation } from '../composables/use-navigation';
 import NavigationItem from './NavigationItem.vue';
@@ -12,6 +12,7 @@ import VListItem from '@/components/v-list-item.vue';
 import VList from '@/components/v-list.vue';
 import VMenu from '@/components/v-menu.vue';
 import VTextOverflow from '@/components/v-text-overflow.vue';
+import { getNewMediaCollectionOrderIndex } from '@/new-media/config';
 import { useCollectionsStore } from '@/stores/collections';
 import { useUserStore } from '@/stores/user';
 
@@ -29,12 +30,28 @@ const userStore = useUserStore();
 
 const rootItems = computed(() => {
 	const shownCollections = showHidden.value ? collectionsStore.allCollections : collectionsStore.visibleCollections;
-	return orderBy(
-		shownCollections.filter((collection) => {
+
+	return shownCollections
+		.filter((collection) => {
 			return isNil(collection?.meta?.group);
-		}),
-		['meta.sort', 'collection'],
-	);
+		})
+		.sort((a, b) => {
+			const newMediaIndexA = getNewMediaCollectionOrderIndex(a.collection);
+			const newMediaIndexB = getNewMediaCollectionOrderIndex(b.collection);
+
+			if (newMediaIndexA !== -1 || newMediaIndexB !== -1) {
+				if (newMediaIndexA === -1) return 1;
+				if (newMediaIndexB === -1) return -1;
+				if (newMediaIndexA !== newMediaIndexB) return newMediaIndexA - newMediaIndexB;
+			}
+
+			const sortA = a.meta?.sort ?? Number.MAX_SAFE_INTEGER;
+			const sortB = b.meta?.sort ?? Number.MAX_SAFE_INTEGER;
+
+			if (sortA !== sortB) return sortA - sortB;
+
+			return a.collection.localeCompare(b.collection);
+		});
 });
 
 const dense = computed(() => collectionsStore.visibleCollections.length > 5);

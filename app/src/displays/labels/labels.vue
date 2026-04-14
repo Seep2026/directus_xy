@@ -2,6 +2,7 @@
 import formatTitle from '@directus/format-title';
 import { isEmpty, isString } from 'lodash';
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import VChip from '@/components/v-chip.vue';
 import VIcon from '@/components/v-icon/v-icon.vue';
 import DisplayColor from '@/displays/color/color.vue';
@@ -28,6 +29,32 @@ const props = withDefaults(
 		choices: () => [],
 	},
 );
+
+const { t, te } = useI18n();
+
+function translateChoiceText(choiceText: string | undefined, itemValue: string | number): string | null {
+	if (!choiceText) return null;
+
+	if (choiceText.startsWith('$t:')) {
+		return t(choiceText.replace('$t:', ''));
+	}
+
+	if (te(choiceText)) {
+		return t(choiceText);
+	}
+
+	if (typeof itemValue === 'string' && te(itemValue)) {
+		return t(itemValue);
+	}
+
+	const normalized = choiceText.trim().toLowerCase().replaceAll(/\s+/g, '_');
+
+	if (normalized && te(normalized)) {
+		return t(normalized);
+	}
+
+	return choiceText;
+}
 
 const items = computed(() => {
 	let items: string[] | number[];
@@ -60,9 +87,11 @@ const items = computed(() => {
 				background: 'var(--theme--background-normal)',
 			};
 		} else {
+			const translatedChoiceText = translateChoiceText(choice.text, item);
+
 			return {
 				value: item,
-				text: choice.text || itemStringValue,
+				text: translatedChoiceText || itemStringValue,
 				icon: choice.icon,
 				color: choice.color,
 				foreground: choice.foreground || 'var(--theme--foreground)',

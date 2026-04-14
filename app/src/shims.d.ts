@@ -146,3 +146,8 @@ declare module 'vue-virtual-scroller' {
 
 	export function IdState(options?: { idProp?: (value: any) => unknown }): ComponentOptionsMixin;
 }
+
+declare const __NEW_MEDIA_PRODUCT_NAME__: string;
+declare const __NEW_MEDIA_PRODUCT_VERSION__: string;
+declare const __NEW_MEDIA_PRODUCT_TITLE__: string;
+declare const __NEW_MEDIA_COLLECTION_ORDER__: string[];
