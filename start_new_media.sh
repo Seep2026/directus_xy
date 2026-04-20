@@ -118,7 +118,7 @@ if ! wait_for_app; then
 fi
 
 echo
-echo "新媒体内容中台 1.3 已启动"
+echo "新媒体内容中台 2.0 已启动"
 echo "API: http://localhost:8055"
 echo "App: http://localhost:8080/admin"
 echo "API 日志: $API_LOG"

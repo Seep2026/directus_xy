@@ -13,6 +13,8 @@ const STATUS_DRAFT = 'draft';
 const STATUS_IN_REVIEW = 'in_review';
 const STATUS_APPROVED = 'approved';
 const STATUS_ADOPTED = 'adopted';
+const TOPIC_STATUS_CAN_WRITE = 'can_write';
+const TOPIC_STATUS_CONVERTED = 'converted';
 const CHANNEL_WECHAT_ARTICLE = 'article';
 
 const ROLE_REVIEWER = '审核者';
@@ -66,6 +68,119 @@ export function registerNewMediaHooks() {
 					throw new InvalidPayloadError({ reason: '打回内容时必须填写审核意见。' });
 				}
 			}
+		}
+
+		return payload;
+	});
+
+	emitter.onFilter<any>(`${SIGNAL_COLLECTION}.items.update`, async (payload, meta, context) => {
+		if (!isRecord(payload)) return payload;
+
+		const database = context.database as Knex | undefined;
+		if (!database) return payload;
+
+		const keys = getPrimaryKeys(meta['keys']);
+		if (keys.length === 0) return payload;
+
+		for (const key of keys) {
+			const current = await database(SIGNAL_COLLECTION)
+				.select(
+					'id',
+					'status',
+					'topic_status',
+					'anchor_type',
+					'topic_angle',
+					'product_relation',
+					'reader_takeaway',
+					'content_form',
+					'audience_type',
+					'linked_content',
+				)
+				.where({ id: key })
+				.first();
+
+			if (!current) continue;
+
+			const nextStatus = String(payload['status'] ?? current['status'] ?? '');
+			const nextTopicStatus = String(payload['topic_status'] ?? current['topic_status'] ?? '');
+			const targetConvert = nextStatus === STATUS_ADOPTED || nextTopicStatus === TOPIC_STATUS_CONVERTED;
+			const targetCanWrite = nextTopicStatus === TOPIC_STATUS_CAN_WRITE;
+
+			if (!targetConvert && !targetCanWrite) continue;
+
+			const merged = {
+				anchor_type: payload['anchor_type'] ?? current['anchor_type'],
+				topic_angle: payload['topic_angle'] ?? current['topic_angle'],
+				product_relation: payload['product_relation'] ?? current['product_relation'],
+				reader_takeaway: payload['reader_takeaway'] ?? current['reader_takeaway'],
+				content_form: payload['content_form'] ?? current['content_form'],
+				audience_type: payload['audience_type'] ?? current['audience_type'],
+			};
+
+			const requiredForCanWrite = [
+				['anchor_type', '锚点类型'],
+				['topic_angle', '一句话选题结论'],
+				['product_relation', '与产品关系'],
+				['reader_takeaway', '用户带走点'],
+				['content_form', '建议写法'],
+				['audience_type', '目标读者'],
+			] as const;
+
+			const requiredForConvert = [
+				['anchor_type', '锚点类型'],
+				['topic_angle', '一句话选题结论'],
+				['product_relation', '与产品关系'],
+				['reader_takeaway', '用户带走点'],
+			] as const;
+
+			const requiredFields = targetConvert ? requiredForConvert : requiredForCanWrite;
+			const missing = requiredFields.filter(([field]) => !getText(merged[field])).map(([, label]) => label);
+
+			if (missing.length > 0 && !current['linked_content']) {
+				const actionLabel = targetConvert ? '转为内容卡' : '标记为可写';
+				throw new InvalidPayloadError({
+					reason: `${actionLabel}前请补全：${missing.join('、')}`,
+				});
+			}
+		}
+
+		return payload;
+	});
+
+	emitter.onFilter<any>(`${SIGNAL_COLLECTION}.items.create`, async (payload) => {
+		if (!isRecord(payload)) return payload;
+
+		const nextStatus = String(payload['status'] ?? '');
+		const nextTopicStatus = String(payload['topic_status'] ?? '');
+		const targetConvert = nextStatus === STATUS_ADOPTED || nextTopicStatus === TOPIC_STATUS_CONVERTED;
+		const targetCanWrite = nextTopicStatus === TOPIC_STATUS_CAN_WRITE;
+
+		if (!targetConvert && !targetCanWrite) return payload;
+
+		const requiredForCanWrite = [
+			['anchor_type', '锚点类型'],
+			['topic_angle', '一句话选题结论'],
+			['product_relation', '与产品关系'],
+			['reader_takeaway', '用户带走点'],
+			['content_form', '建议写法'],
+			['audience_type', '目标读者'],
+		] as const;
+
+		const requiredForConvert = [
+			['anchor_type', '锚点类型'],
+			['topic_angle', '一句话选题结论'],
+			['product_relation', '与产品关系'],
+			['reader_takeaway', '用户带走点'],
+		] as const;
+
+		const requiredFields = targetConvert ? requiredForConvert : requiredForCanWrite;
+		const missing = requiredFields.filter(([field]) => !getText(payload[field])).map(([, label]) => label);
+
+		if (missing.length > 0) {
+			const actionLabel = targetConvert ? '转为内容卡' : '标记为可写';
+			throw new InvalidPayloadError({
+				reason: `${actionLabel}前请补全：${missing.join('、')}`,
+			});
 		}
 
 		return payload;
@@ -166,6 +281,7 @@ export function registerNewMediaHooks() {
 	emitter.onAction(`${SIGNAL_COLLECTION}.items.update`, async (meta, context) => {
 		const payload = meta['payload'];
 		const database = context.database as Knex | undefined;
+		const accountability = context.accountability ?? null;
 
 		if (!database || !isRecord(payload)) return;
 
@@ -175,16 +291,17 @@ export function registerNewMediaHooks() {
 			await syncSignalSnapshot(database, key);
 		}
 
-		if (payload['status'] !== STATUS_ADOPTED) return;
+		if (payload['status'] !== STATUS_ADOPTED && payload['topic_status'] !== TOPIC_STATUS_CONVERTED) return;
 
 		for (const key of keys) {
-			await tryCreateContentFromAdoptedSignal(database, key);
+			await tryCreateContentFromSignalDecision(database, key, accountability?.user ?? null);
 		}
 	});
 
 	emitter.onAction(`${SIGNAL_COLLECTION}.items.create`, async (meta, context) => {
 		const payload = meta['payload'];
 		const database = context.database as Knex | undefined;
+		const accountability = context.accountability ?? null;
 
 		if (!database || !isRecord(payload)) return;
 
@@ -193,21 +310,35 @@ export function registerNewMediaHooks() {
 			await syncSignalSnapshot(database, key);
 		}
 
-		if (payload['status'] !== STATUS_ADOPTED) return;
+		if (payload['status'] !== STATUS_ADOPTED && payload['topic_status'] !== TOPIC_STATUS_CONVERTED) return;
 
 		for (const key of keys) {
-			await tryCreateContentFromAdoptedSignal(database, key);
+			await tryCreateContentFromSignalDecision(database, key, accountability?.user ?? null);
 		}
 	});
 }
 
-async function tryCreateContentFromAdoptedSignal(database: Knex, signalId: string | number) {
+async function tryCreateContentFromSignalDecision(
+	database: Knex,
+	signalId: string | number,
+	converterUserId: string | null,
+) {
 	const signal = await database(SIGNAL_COLLECTION)
 		.select(
 			'id',
 			'title',
 			'signal_title',
 			'signal_url',
+			'topic_status',
+			'anchor_type',
+			'topic_angle',
+			'product_relation',
+			'reader_takeaway',
+			'publish_reason',
+			'content_form',
+			'audience_type',
+			'title_direction',
+			'topic_note',
 			'source_ref',
 			'source_name_snapshot',
 			'source_note_snapshot',
@@ -220,7 +351,11 @@ async function tryCreateContentFromAdoptedSignal(database: Knex, signalId: strin
 		.first();
 
 	if (!signal) return;
-	if (signal['status'] !== STATUS_ADOPTED) return;
+	const canConvert =
+		signal['status'] === STATUS_ADOPTED ||
+		signal['topic_status'] === TOPIC_STATUS_CAN_WRITE ||
+		signal['topic_status'] === TOPIC_STATUS_CONVERTED;
+	if (!canConvert) return;
 	if (signal['linked_content']) return;
 
 	const source =
@@ -249,17 +384,39 @@ async function tryCreateContentFromAdoptedSignal(database: Knex, signalId: strin
 			status: STATUS_DRAFT,
 			current_version: 1,
 			linked_signal: signal['id'],
+			signal_title_snapshot: signalTitle,
+			signal_url_snapshot: getText(signal['signal_url']) || null,
+			topic_anchor_type: getText(signal['anchor_type']) || null,
+			topic_angle: getText(signal['topic_angle']) || null,
+			topic_product_relation: getText(signal['product_relation']) || null,
+			topic_reader_takeaway: getText(signal['reader_takeaway']) || null,
+			topic_publish_reason: getText(signal['publish_reason']) || null,
+			topic_content_form: getText(signal['content_form']) || null,
+			topic_audience_type: getText(signal['audience_type']) || null,
+			topic_title_direction: getText(signal['title_direction']) || null,
+			topic_note_snapshot: getText(signal['topic_note']) || null,
 			primary_source: source?.['id'] ?? null,
 			source_name_snapshot: sourceNameSnapshot || null,
 			source_url_snapshot: sourceUrlSnapshot || null,
 			source_note_snapshot: sourceNoteSnapshot || null,
+			summary: getText(signal['reader_takeaway']) || null,
+			outline: getText(signal['topic_angle']) || null,
 		})
 		.returning('id');
 
 	const createdId = getReturningId(inserted);
 	if (!createdId) return;
 
-	await database(SIGNAL_COLLECTION).where({ id: signal['id'] }).update({ linked_content: createdId });
+	await database(SIGNAL_COLLECTION)
+		.where({ id: signal['id'] })
+		.update({
+			linked_content: createdId,
+			status: STATUS_ADOPTED,
+			topic_status: TOPIC_STATUS_CONVERTED,
+			converted_at: new Date().toISOString(),
+			converted_by: converterUserId,
+			converted_content_snapshot: `${contentCode} | ${signalTitle}`,
+		});
 }
 
 async function syncSignalSnapshot(database: Knex, signalId: string | number) {
@@ -275,6 +432,8 @@ async function syncSignalSnapshot(database: Knex, signalId: string | number) {
 			'source_ref',
 			'source_name_snapshot',
 			'source_note_snapshot',
+			'topic_status',
+			'linked_content',
 		)
 		.where({ id: signalId })
 		.first();
@@ -289,6 +448,9 @@ async function syncSignalSnapshot(database: Knex, signalId: string | number) {
 	if (signalTitle && getText(signal['title']) !== signalTitle) patch['title'] = signalTitle;
 	if (signalUrl && getText(signal['signal_url']) !== signalUrl) patch['signal_url'] = signalUrl;
 	if (signalUrl && getText(signal['source_link']) !== signalUrl) patch['source_link'] = signalUrl;
+	if (signal['linked_content'] != null && getText(signal['topic_status']) !== TOPIC_STATUS_CONVERTED) {
+		patch['topic_status'] = TOPIC_STATUS_CONVERTED;
+	}
 
 	if (!getText(signal['signal_type'])) {
 		patch['signal_type'] = mapSignalType(getText(signal['source_type']), signalUrl);

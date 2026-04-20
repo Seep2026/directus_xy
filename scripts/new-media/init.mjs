@@ -16,7 +16,7 @@ const ENABLE_CONTENT_SAMPLE_DATA =
 const CREATOR_ROLE_NAME = '内容创作者';
 const REVIEWER_ROLE_NAME = '审核者';
 const DEFAULT_PRODUCT_NAME = '新媒体内容中台';
-const DEFAULT_PRODUCT_VERSION = '1.3';
+const DEFAULT_PRODUCT_VERSION = '2.0';
 
 const COLLECTIONS = {
 	signals: 'nm_signals',
@@ -43,6 +43,14 @@ const STATUS = {
 	pending: 'pending',
 	adopted: 'adopted',
 	rejected: 'rejected',
+};
+
+const TOPIC_STATUS = {
+	pending: 'pending',
+	canWrite: 'can_write',
+	onHold: 'on_hold',
+	dropped: 'dropped',
+	converted: 'converted',
 };
 let accessToken = '';
 let productInfo = {
@@ -85,6 +93,7 @@ async function main() {
 	await ensureUsers();
 	await ensurePermissions();
 	await ensureDashboard();
+	await ensureSignalPresets();
 	await maybeSeedContentSampleData();
 
 	console.log('\n[init:new-media] 完成 ✅');
@@ -290,6 +299,54 @@ async function ensureFields() {
 		{ text: '$t:new_media_signal_type_other', value: 'other' },
 	];
 
+	const anchorTypeChoices = [
+		{ text: '$t:new_media_anchor_type_brand', value: 'brand_anchor' },
+		{ text: '$t:new_media_anchor_type_cognition', value: 'cognition_anchor' },
+		{ text: '$t:new_media_anchor_type_trust', value: 'trust_anchor' },
+	];
+
+	const productRelationChoices = [
+		{ text: '$t:new_media_product_relation_brand', value: 'brand_positioning' },
+		{ text: '$t:new_media_product_relation_product', value: 'product_capability' },
+		{ text: '$t:new_media_product_relation_faq', value: 'customer_question' },
+		{ text: '$t:new_media_product_relation_trust', value: 'professional_trust' },
+		{ text: '$t:new_media_product_relation_trend', value: 'trend_recycle_brand' },
+	];
+
+	const publishReasonChoices = [
+		{ text: '$t:new_media_publish_reason_trend', value: 'industry_trend' },
+		{ text: '$t:new_media_publish_reason_user_question', value: 'user_question' },
+		{ text: '$t:new_media_publish_reason_product', value: 'product_explain' },
+		{ text: '$t:new_media_publish_reason_brand', value: 'brand_reinforce' },
+		{ text: '$t:new_media_publish_reason_operation', value: 'operation_rhythm' },
+		{ text: '$t:new_media_publish_reason_series', value: 'series_followup' },
+	];
+
+	const contentFormChoices = [
+		{ text: '$t:new_media_content_form_short_comment', value: 'short_comment' },
+		{ text: '$t:new_media_content_form_explainer', value: 'explainer' },
+		{ text: '$t:new_media_content_form_breakdown', value: 'breakdown' },
+		{ text: '$t:new_media_content_form_method', value: 'method' },
+		{ text: '$t:new_media_content_form_brand_view', value: 'brand_view' },
+		{ text: '$t:new_media_content_form_product_reading', value: 'product_reading' },
+	];
+
+	const topicStatusChoices = [
+		{ text: '$t:new_media_topic_status_pending', value: TOPIC_STATUS.pending },
+		{ text: '$t:new_media_topic_status_can_write', value: TOPIC_STATUS.canWrite },
+		{ text: '$t:new_media_topic_status_on_hold', value: TOPIC_STATUS.onHold },
+		{ text: '$t:new_media_topic_status_dropped', value: TOPIC_STATUS.dropped },
+		{ text: '$t:new_media_topic_status_converted', value: TOPIC_STATUS.converted },
+	];
+
+	const audienceTypeChoices = [
+		{ text: '$t:new_media_audience_type_developer', value: 'developer' },
+		{ text: '$t:new_media_audience_type_ai_pm', value: 'ai_pm' },
+		{ text: '$t:new_media_audience_type_startup', value: 'startup_team' },
+		{ text: '$t:new_media_audience_type_tech_lead', value: 'tech_lead' },
+		{ text: '$t:new_media_audience_type_general', value: 'general_industry' },
+	];
+
 	const contentTypeChoices = [
 		{ text: '$t:new_media_content_type_brand', value: 'brand' },
 		{ text: '$t:new_media_content_type_awareness', value: 'awareness' },
@@ -450,6 +507,121 @@ async function ensureFields() {
 	});
 
 	await ensureField(COLLECTIONS.signals, {
+		field: 'anchor_type',
+		type: 'string',
+		meta: {
+			interface: 'select-dropdown',
+			display: 'labels',
+			width: 'half',
+			note: '建议先判断内容锚点。',
+			options: { choices: anchorTypeChoices },
+			display_options: { choices: anchorTypeChoices },
+		},
+		schema: { max_length: 40, nullable: true },
+	});
+
+	await ensureField(COLLECTIONS.signals, {
+		field: 'topic_angle',
+		type: 'text',
+		meta: { interface: 'input-multiline', width: 'full', note: '建议补一句话选题结论。' },
+	});
+
+	await ensureField(COLLECTIONS.signals, {
+		field: 'product_relation',
+		type: 'string',
+		meta: {
+			interface: 'select-dropdown',
+			display: 'labels',
+			width: 'half',
+			note: '建议明确与产品关系。',
+			options: { choices: productRelationChoices },
+			display_options: { choices: productRelationChoices },
+		},
+		schema: { max_length: 60, nullable: true },
+	});
+
+	await ensureField(COLLECTIONS.signals, {
+		field: 'reader_takeaway',
+		type: 'text',
+		meta: { interface: 'input-multiline', width: 'full', note: '建议填写用户带走点。' },
+	});
+
+	await ensureField(COLLECTIONS.signals, {
+		field: 'publish_reason',
+		type: 'string',
+		meta: {
+			interface: 'select-dropdown',
+			display: 'labels',
+			width: 'half',
+			note: '为什么这篇值得现在发',
+			options: { choices: publishReasonChoices },
+			display_options: { choices: publishReasonChoices },
+		},
+		schema: { max_length: 60, nullable: true },
+	});
+
+	await ensureField(COLLECTIONS.signals, {
+		field: 'publish_reason_note',
+		type: 'text',
+		meta: { interface: 'input-multiline', width: 'half', note: '发布理由补充说明（可选）' },
+	});
+
+	await ensureField(COLLECTIONS.signals, {
+		field: 'content_form',
+		type: 'string',
+		meta: {
+			interface: 'select-dropdown',
+			display: 'labels',
+			width: 'half',
+			note: '建议写法',
+			options: { choices: contentFormChoices },
+			display_options: { choices: contentFormChoices },
+		},
+		schema: { max_length: 60, nullable: true },
+	});
+
+	await ensureField(COLLECTIONS.signals, {
+		field: 'topic_status',
+		type: 'string',
+		meta: {
+			interface: 'select-dropdown',
+			display: 'labels',
+			width: 'half',
+			note: '选题状态（用于选题判断，不等于内容审核状态）',
+			required: true,
+			options: { choices: topicStatusChoices },
+			display_options: { choices: topicStatusChoices },
+		},
+		schema: { max_length: 40, default_value: TOPIC_STATUS.pending, nullable: false },
+	});
+
+	await ensureField(COLLECTIONS.signals, {
+		field: 'title_direction',
+		type: 'text',
+		meta: { interface: 'input-multiline', width: 'full', note: '标题方向草案（可填 1~3 个方向）' },
+	});
+
+	await ensureField(COLLECTIONS.signals, {
+		field: 'audience_type',
+		type: 'string',
+		meta: {
+			interface: 'select-dropdown',
+			display: 'labels',
+			width: 'half',
+			note: '本篇主要面向谁',
+			options: { choices: audienceTypeChoices },
+			display_options: { choices: audienceTypeChoices },
+		},
+		schema: { max_length: 40, nullable: true },
+	});
+
+	await ensureField(COLLECTIONS.signals, {
+		field: 'topic_note',
+		type: 'text',
+		meta: { interface: 'input-multiline', width: 'full', note: '选题补充判断' },
+	});
+
+	await ensureField(COLLECTIONS.signals, {
 		field: 'submitted_by',
 		type: 'uuid',
 		meta: {
@@ -481,6 +653,37 @@ async function ensureFields() {
 		type: 'integer',
 		meta: { interface: 'select-dropdown-m2o', width: 'half', note: '采纳后关联的内容卡' },
 		schema: { nullable: true },
+	});
+
+	await ensureField(COLLECTIONS.signals, {
+		field: 'converted_at',
+		type: 'timestamp',
+		meta: { interface: 'datetime', width: 'half', note: '转内容卡时间', readonly: true },
+		schema: { nullable: true },
+	});
+
+	await ensureField(COLLECTIONS.signals, {
+		field: 'converted_by',
+		type: 'uuid',
+		meta: {
+			interface: 'select-dropdown-m2o',
+			width: 'half',
+			note: '转内容卡人',
+			readonly: true,
+			options: { template: '{{first_name}} {{last_name}} ({{email}})' },
+		},
+		schema: { nullable: true },
+	});
+
+	await ensureField(COLLECTIONS.signals, {
+		field: 'converted_content_snapshot',
+		type: 'text',
+		meta: {
+			interface: 'input-multiline',
+			width: 'full',
+			note: '转卡快照（内容编号/标题）',
+			readonly: true,
+		},
 	});
 
 	await ensureField(COLLECTIONS.signals, {
@@ -693,6 +896,119 @@ async function ensureFields() {
 		type: 'integer',
 		meta: { interface: 'select-dropdown-m2o', width: 'half', note: '关联信号池记录' },
 		schema: { nullable: true },
+	});
+
+	await ensureField(COLLECTIONS.contentCards, {
+		field: 'signal_title_snapshot',
+		type: 'string',
+		meta: { interface: 'input', width: 'half', note: '信号标题快照', readonly: true },
+		schema: { max_length: 255, nullable: true },
+	});
+
+	await ensureField(COLLECTIONS.contentCards, {
+		field: 'signal_url_snapshot',
+		type: 'string',
+		meta: { interface: 'input', width: 'half', note: '信号链接快照', readonly: true },
+		schema: { max_length: 500, nullable: true },
+	});
+
+	await ensureField(COLLECTIONS.contentCards, {
+		field: 'topic_anchor_type',
+		type: 'string',
+		meta: {
+			interface: 'select-dropdown',
+			display: 'labels',
+			width: 'half',
+			note: '选题锚点快照',
+			readonly: true,
+			options: { choices: anchorTypeChoices },
+			display_options: { choices: anchorTypeChoices },
+		},
+		schema: { max_length: 40, nullable: true },
+	});
+
+	await ensureField(COLLECTIONS.contentCards, {
+		field: 'topic_angle',
+		type: 'text',
+		meta: { interface: 'input-multiline', width: 'full', note: '选题角度快照', readonly: true },
+	});
+
+	await ensureField(COLLECTIONS.contentCards, {
+		field: 'topic_product_relation',
+		type: 'string',
+		meta: {
+			interface: 'select-dropdown',
+			display: 'labels',
+			width: 'half',
+			note: '与产品关系快照',
+			readonly: true,
+			options: { choices: productRelationChoices },
+			display_options: { choices: productRelationChoices },
+		},
+		schema: { max_length: 60, nullable: true },
+	});
+
+	await ensureField(COLLECTIONS.contentCards, {
+		field: 'topic_reader_takeaway',
+		type: 'text',
+		meta: { interface: 'input-multiline', width: 'full', note: '用户带走点快照', readonly: true },
+	});
+
+	await ensureField(COLLECTIONS.contentCards, {
+		field: 'topic_publish_reason',
+		type: 'string',
+		meta: {
+			interface: 'select-dropdown',
+			display: 'labels',
+			width: 'half',
+			note: '发布理由快照',
+			readonly: true,
+			options: { choices: publishReasonChoices },
+			display_options: { choices: publishReasonChoices },
+		},
+		schema: { max_length: 60, nullable: true },
+	});
+
+	await ensureField(COLLECTIONS.contentCards, {
+		field: 'topic_content_form',
+		type: 'string',
+		meta: {
+			interface: 'select-dropdown',
+			display: 'labels',
+			width: 'half',
+			note: '建议写法快照',
+			readonly: true,
+			options: { choices: contentFormChoices },
+			display_options: { choices: contentFormChoices },
+		},
+		schema: { max_length: 60, nullable: true },
+	});
+
+	await ensureField(COLLECTIONS.contentCards, {
+		field: 'topic_audience_type',
+		type: 'string',
+		meta: {
+			interface: 'select-dropdown',
+			display: 'labels',
+			width: 'half',
+			note: '目标读者快照',
+			readonly: true,
+			options: { choices: audienceTypeChoices },
+			display_options: { choices: audienceTypeChoices },
+		},
+		schema: { max_length: 40, nullable: true },
+	});
+
+	await ensureField(COLLECTIONS.contentCards, {
+		field: 'topic_title_direction',
+		type: 'text',
+		meta: { interface: 'input-multiline', width: 'full', note: '标题方向快照', readonly: true },
+	});
+
+	await ensureField(COLLECTIONS.contentCards, {
+		field: 'topic_note_snapshot',
+		type: 'text',
+		meta: { interface: 'input-multiline', width: 'full', note: '选题备注快照', readonly: true },
 	});
 
 	await ensureField(COLLECTIONS.contentCards, {
@@ -977,6 +1293,12 @@ async function ensureRelations() {
 			schema: { on_delete: 'SET NULL' },
 		},
 		{
+			collection: COLLECTIONS.signals,
+			field: 'converted_by',
+			related_collection: 'directus_users',
+			schema: { on_delete: 'SET NULL' },
+		},
+		{
 			collection: COLLECTIONS.contentCards,
 			field: 'owner',
 			related_collection: 'directus_users',
@@ -1066,9 +1388,23 @@ async function ensureFieldTranslations() {
 		[COLLECTIONS.signals, 'why_it_matters', '值得关注原因'],
 		[COLLECTIONS.signals, 'xyunapi_relevance', '与 xyunapi 关联点'],
 		[COLLECTIONS.signals, 'suggested_direction', '建议内容方向'],
+		[COLLECTIONS.signals, 'anchor_type', '锚点类型'],
+		[COLLECTIONS.signals, 'topic_angle', '一句话选题结论'],
+		[COLLECTIONS.signals, 'product_relation', '与产品关系'],
+		[COLLECTIONS.signals, 'reader_takeaway', '用户带走点'],
+		[COLLECTIONS.signals, 'publish_reason', '发布理由'],
+		[COLLECTIONS.signals, 'publish_reason_note', '发布理由补充'],
+		[COLLECTIONS.signals, 'content_form', '建议写法'],
+		[COLLECTIONS.signals, 'topic_status', '选题状态'],
+		[COLLECTIONS.signals, 'title_direction', '标题方向草案'],
+		[COLLECTIONS.signals, 'audience_type', '目标读者'],
+		[COLLECTIONS.signals, 'topic_note', '选题备注'],
 		[COLLECTIONS.signals, 'submitted_by', '提交人'],
 		[COLLECTIONS.signals, 'status', '状态'],
 		[COLLECTIONS.signals, 'linked_content', '关联内容卡'],
+		[COLLECTIONS.signals, 'converted_at', '转卡时间'],
+		[COLLECTIONS.signals, 'converted_by', '转卡人'],
+		[COLLECTIONS.signals, 'converted_content_snapshot', '转卡快照'],
 		[COLLECTIONS.signals, 'title', '信号标题（兼容）'],
 		[COLLECTIONS.signals, 'source_type', '来源类型（兼容）'],
 		[COLLECTIONS.signals, 'source_link', '内容链接（兼容）'],
@@ -1092,6 +1428,17 @@ async function ensureFieldTranslations() {
 		[COLLECTIONS.contentCards, 'version_note', '版本说明'],
 		[COLLECTIONS.contentCards, 'current_version', '当前版本号'],
 		[COLLECTIONS.contentCards, 'linked_signal', '关联信号'],
+		[COLLECTIONS.contentCards, 'signal_title_snapshot', '信号标题快照'],
+		[COLLECTIONS.contentCards, 'signal_url_snapshot', '信号链接快照'],
+		[COLLECTIONS.contentCards, 'topic_anchor_type', '锚点类型快照'],
+		[COLLECTIONS.contentCards, 'topic_angle', '选题角度快照'],
+		[COLLECTIONS.contentCards, 'topic_product_relation', '与产品关系快照'],
+		[COLLECTIONS.contentCards, 'topic_reader_takeaway', '用户带走点快照'],
+		[COLLECTIONS.contentCards, 'topic_publish_reason', '发布理由快照'],
+		[COLLECTIONS.contentCards, 'topic_content_form', '建议写法快照'],
+		[COLLECTIONS.contentCards, 'topic_audience_type', '目标读者快照'],
+		[COLLECTIONS.contentCards, 'topic_title_direction', '标题方向快照'],
+		[COLLECTIONS.contentCards, 'topic_note_snapshot', '选题备注快照'],
 		[COLLECTIONS.contentCards, 'primary_source', '来源主体（兼容）'],
 		[COLLECTIONS.contentCards, 'source_name_snapshot', '来源名称快照'],
 		[COLLECTIONS.contentCards, 'source_url_snapshot', '来源链接快照'],
@@ -1158,7 +1505,7 @@ async function ensureFieldTranslations() {
 }
 
 async function ensureV11Compatibility() {
-	console.log('[init:new-media] 执行 1.1-1.3 字段兼容迁移...');
+	console.log('[init:new-media] 执行 1.1-2.0 字段兼容迁移...');
 
 	const sourcesResponse = await api('GET', `/items/${COLLECTIONS.sources}`, {
 		query: {
@@ -1184,9 +1531,25 @@ async function ensureV11Compatibility() {
 				'signal_url',
 				'source_type',
 				'signal_type',
+				'status',
+				'topic_status',
+				'linked_content',
 				'source_ref',
 				'source_name_snapshot',
 				'source_note_snapshot',
+				'anchor_type',
+				'topic_angle',
+				'product_relation',
+				'reader_takeaway',
+				'publish_reason',
+				'publish_reason_note',
+				'content_form',
+				'title_direction',
+				'audience_type',
+				'topic_note',
+				'converted_at',
+				'converted_by',
+				'converted_content_snapshot',
 			],
 			limit: -1,
 		},
@@ -1215,6 +1578,30 @@ async function ensureV11Compatibility() {
 
 		if (!getText(signal.signal_type)) {
 			patch.signal_type = mapSignalType(signal.source_type, signalUrl);
+		}
+
+		if (!getText(signal.topic_status)) {
+			if (signal.linked_content) {
+				patch.topic_status = TOPIC_STATUS.converted;
+			} else if (signal.status === STATUS.adopted) {
+				patch.topic_status = TOPIC_STATUS.canWrite;
+			} else if (signal.status === STATUS.rejected) {
+				patch.topic_status = TOPIC_STATUS.dropped;
+			} else if (signal.status === STATUS.pending) {
+				patch.topic_status = TOPIC_STATUS.pending;
+			} else {
+				patch.topic_status = TOPIC_STATUS.pending;
+			}
+		}
+
+		if (signal.linked_content) {
+			if (getText(signal.topic_status) !== TOPIC_STATUS.converted && patch.topic_status !== TOPIC_STATUS.converted) {
+				patch.topic_status = TOPIC_STATUS.converted;
+			}
+
+			if (!signal.converted_at) {
+				patch.converted_at = new Date().toISOString();
+			}
 		}
 
 		let sourceRef = signal.source_ref;
@@ -1256,6 +1643,17 @@ async function ensureV11Compatibility() {
 			fields: [
 				'id',
 				'linked_signal',
+				'signal_title_snapshot',
+				'signal_url_snapshot',
+				'topic_anchor_type',
+				'topic_angle',
+				'topic_product_relation',
+				'topic_reader_takeaway',
+				'topic_publish_reason',
+				'topic_content_form',
+				'topic_audience_type',
+				'topic_title_direction',
+				'topic_note_snapshot',
 				'source_name_snapshot',
 				'source_url_snapshot',
 				'source_note_snapshot',
@@ -1293,6 +1691,62 @@ async function ensureV11Compatibility() {
 
 				if (sourceNoteSnapshot && getText(card.source_note_snapshot) !== sourceNoteSnapshot) {
 					patch.source_note_snapshot = sourceNoteSnapshot;
+				}
+
+				const signalTitleSnapshot = getText(signal.signal_title) || getText(signal.title);
+				const signalUrlSnapshot = getText(signal.signal_url);
+
+				if (signalTitleSnapshot && getText(card.signal_title_snapshot) !== signalTitleSnapshot) {
+					patch.signal_title_snapshot = signalTitleSnapshot;
+				}
+
+				if (signalUrlSnapshot && getText(card.signal_url_snapshot) !== signalUrlSnapshot) {
+					patch.signal_url_snapshot = signalUrlSnapshot;
+				}
+
+				if (getText(signal.anchor_type) && getText(card.topic_anchor_type) !== getText(signal.anchor_type)) {
+					patch.topic_anchor_type = getText(signal.anchor_type);
+				}
+
+				if (getText(signal.topic_angle) && getText(card.topic_angle) !== getText(signal.topic_angle)) {
+					patch.topic_angle = getText(signal.topic_angle);
+				}
+
+				if (
+					getText(signal.product_relation) &&
+					getText(card.topic_product_relation) !== getText(signal.product_relation)
+				) {
+					patch.topic_product_relation = getText(signal.product_relation);
+				}
+
+				if (
+					getText(signal.reader_takeaway) &&
+					getText(card.topic_reader_takeaway) !== getText(signal.reader_takeaway)
+				) {
+					patch.topic_reader_takeaway = getText(signal.reader_takeaway);
+				}
+
+				if (getText(signal.publish_reason) && getText(card.topic_publish_reason) !== getText(signal.publish_reason)) {
+					patch.topic_publish_reason = getText(signal.publish_reason);
+				}
+
+				if (getText(signal.content_form) && getText(card.topic_content_form) !== getText(signal.content_form)) {
+					patch.topic_content_form = getText(signal.content_form);
+				}
+
+				if (getText(signal.audience_type) && getText(card.topic_audience_type) !== getText(signal.audience_type)) {
+					patch.topic_audience_type = getText(signal.audience_type);
+				}
+
+				if (
+					getText(signal.title_direction) &&
+					getText(card.topic_title_direction) !== getText(signal.title_direction)
+				) {
+					patch.topic_title_direction = getText(signal.title_direction);
+				}
+
+				if (getText(signal.topic_note) && getText(card.topic_note_snapshot) !== getText(signal.topic_note)) {
+					patch.topic_note_snapshot = getText(signal.topic_note);
 				}
 			}
 		}
@@ -1525,7 +1979,7 @@ async function ensureDashboard() {
 			name: '最近通过内容',
 			type: 'list',
 			position_x: 1,
-			position_y: 9,
+			position_y: 17,
 			width: 12,
 			height: 8,
 			show_header: true,
@@ -1542,7 +1996,7 @@ async function ensureDashboard() {
 			},
 		},
 		{
-			name: '最近采纳的信号',
+			name: '待判断选题',
 			type: 'list',
 			position_x: 13,
 			position_y: 9,
@@ -1557,7 +2011,47 @@ async function ensureDashboard() {
 				displayTemplate: '{{signal_title}}',
 				linkToItem: true,
 				filter: {
-					status: { _eq: STATUS.adopted },
+					topic_status: { _eq: TOPIC_STATUS.pending },
+				},
+			},
+		},
+		{
+			name: '已判断可写选题',
+			type: 'list',
+			position_x: 1,
+			position_y: 9,
+			width: 12,
+			height: 8,
+			show_header: true,
+			options: {
+				collection: COLLECTIONS.signals,
+				limit: 6,
+				sortField: 'id',
+				sortDirection: 'desc',
+				displayTemplate: '{{signal_title}}',
+				linkToItem: true,
+				filter: {
+					topic_status: { _eq: TOPIC_STATUS.canWrite },
+				},
+			},
+		},
+		{
+			name: '最近转卡选题',
+			type: 'list',
+			position_x: 13,
+			position_y: 17,
+			width: 12,
+			height: 8,
+			show_header: true,
+			options: {
+				collection: COLLECTIONS.signals,
+				limit: 6,
+				sortField: 'converted_at',
+				sortDirection: 'desc',
+				displayTemplate: '{{signal_title}}',
+				linkToItem: true,
+				filter: {
+					topic_status: { _eq: TOPIC_STATUS.converted },
 				},
 			},
 		},
@@ -1566,6 +2060,119 @@ async function ensureDashboard() {
 	for (const panel of panels) {
 		await ensurePanel(dashboard.id, panel);
 	}
+
+	const existingPanels = await api('GET', '/panels', {
+		query: {
+			fields: ['id', 'name', 'dashboard'],
+			filter: { dashboard: { _eq: dashboard.id } },
+			limit: -1,
+		},
+	});
+
+	const allowedNames = new Set(panels.map((panel) => panel.name));
+
+	for (const panel of existingPanels?.data ?? []) {
+		if (!allowedNames.has(panel.name)) {
+			await api('DELETE', `/panels/${panel.id}`);
+		}
+	}
+}
+
+async function ensureSignalPresets() {
+	console.log('[init:new-media] 创建/校验选题快捷筛选...');
+
+	const signalFields = [
+		'topic_status',
+		'anchor_type',
+		'product_relation',
+		'content_form',
+		'signal_title',
+		'source_summary',
+		'xyunapi_relevance',
+		'source_ref',
+	];
+
+	await ensurePreset({
+		bookmark: null,
+		collection: COLLECTIONS.signals,
+		layout: 'tabular',
+		layout_query: {
+			fields: signalFields,
+			sort: ['-id'],
+			page: 1,
+			limit: 25,
+		},
+		icon: 'tune',
+		color: '#0B57D0',
+	});
+
+	await ensurePreset({
+		bookmark: '待判断选题',
+		collection: COLLECTIONS.signals,
+		layout: 'tabular',
+		layout_query: {
+			fields: signalFields,
+			sort: ['-id'],
+			page: 1,
+			limit: 25,
+		},
+		filter: {
+			topic_status: { _eq: TOPIC_STATUS.pending },
+		},
+		icon: 'help',
+		color: '#D97706',
+	});
+
+	await ensurePreset({
+		bookmark: '可写选题',
+		collection: COLLECTIONS.signals,
+		layout: 'tabular',
+		layout_query: {
+			fields: signalFields,
+			sort: ['-id'],
+			page: 1,
+			limit: 25,
+		},
+		filter: {
+			topic_status: { _eq: TOPIC_STATUS.canWrite },
+		},
+		icon: 'task_alt',
+		color: '#0F9D58',
+	});
+
+	await ensurePreset({
+		bookmark: '品牌锚点选题',
+		collection: COLLECTIONS.signals,
+		layout: 'tabular',
+		layout_query: {
+			fields: signalFields,
+			sort: ['-id'],
+			page: 1,
+			limit: 25,
+		},
+		filter: {
+			anchor_type: { _eq: 'brand_anchor' },
+		},
+		icon: 'auto_awesome',
+		color: '#7C3AED',
+	});
+
+	await ensurePreset({
+		bookmark: '按来源查看选题',
+		collection: COLLECTIONS.signals,
+		layout: 'tabular',
+		layout_query: {
+			fields: signalFields,
+			sort: ['-id'],
+			page: 1,
+			limit: 25,
+		},
+		filter: {
+			source_ref: { _nnull: true },
+		},
+		icon: 'source',
+		color: '#1F6FEB',
+	});
 }
 
 async function ensureDemoData() {
@@ -1606,6 +2213,16 @@ async function ensureDemoData() {
 		why_it_matters: '可作为品牌定锚内容，强化技术判断力形象。',
 		xyunapi_relevance: '可映射到 xyunapi 的模型适配与调用能力。',
 		suggested_direction: 'anchor',
+		anchor_type: 'brand_anchor',
+		topic_angle: '多模型接入的难点不只是 API 对接，还包括稳定性和可观测性。',
+		product_relation: 'brand_positioning',
+		reader_takeaway: '先统一模型接入层，再谈规模化落地。',
+		publish_reason: 'industry_trend',
+		content_form: 'brand_view',
+		topic_status: TOPIC_STATUS.converted,
+		title_direction: '1) 多模型时代的接入真难点\n2) 企业 AI 接入为什么总卡在稳定性',
+		audience_type: 'tech_lead',
+		topic_note: '适合做品牌定锚，强调方法论。',
 		submitted_by: state.creatorUserId,
 		status: STATUS.adopted,
 	});
@@ -1624,6 +2241,16 @@ async function ensureDemoData() {
 		why_it_matters: '有利于破圈，降低认知门槛并解释商业价值。',
 		xyunapi_relevance: '可结合统一网关与监控能力讲清落地路径。',
 		suggested_direction: 'breakout',
+		anchor_type: 'cognition_anchor',
+		topic_angle: '成本优化不能只看模型单价，更要看链路稳定与切换成本。',
+		product_relation: 'product_capability',
+		reader_takeaway: '成本管理是系统工程，不是单点比价。',
+		publish_reason: 'product_explain',
+		content_form: 'explainer',
+		topic_status: TOPIC_STATUS.converted,
+		title_direction: '1) Agent 成本下降后，团队最该先做什么\n2) 模型便宜了，为什么项目还是贵',
+		audience_type: 'ai_pm',
+		topic_note: '适合作为解释文引导咨询转化。',
 		submitted_by: state.creatorUserId,
 		status: STATUS.adopted,
 	});
@@ -1642,6 +2269,16 @@ async function ensureDemoData() {
 		why_it_matters: '适合承接转化，提高咨询与合作线索质量。',
 		xyunapi_relevance: '可包装为“从 PoC 到生产”案例内容。',
 		suggested_direction: 'convert',
+		anchor_type: 'trust_anchor',
+		topic_angle: '案例内容的价值在于可复用框架，而非单个故事。',
+		product_relation: 'professional_trust',
+		reader_takeaway: '可复用方法论比单次案例更有说服力。',
+		publish_reason: 'series_followup',
+		content_form: 'method',
+		topic_status: TOPIC_STATUS.pending,
+		title_direction: '1) 如何把案例写成可复用方法\n2) 做案例内容别只讲结果',
+		audience_type: 'startup_team',
+		topic_note: '后续可沉淀成系列内容。',
 		submitted_by: state.creatorUserId,
 		status: STATUS.watching,
 	});
@@ -1665,6 +2302,17 @@ async function ensureDemoData() {
 		cta: '回复“工作流”领取模板',
 		risk_notes: '避免绝对化结论，标注数据口径。',
 		linked_signal: signal1.id,
+		signal_title_snapshot: signal1.signal_title,
+		signal_url_snapshot: signal1.signal_url,
+		topic_anchor_type: signal1.anchor_type,
+		topic_angle: signal1.topic_angle,
+		topic_product_relation: signal1.product_relation,
+		topic_reader_takeaway: signal1.reader_takeaway,
+		topic_publish_reason: signal1.publish_reason,
+		topic_content_form: signal1.content_form,
+		topic_audience_type: signal1.audience_type,
+		topic_title_direction: signal1.title_direction,
+		topic_note_snapshot: signal1.topic_note,
 		source_name_snapshot: source1.name,
 		source_url_snapshot: 'https://openai.com/news',
 		source_note_snapshot: source1.note,
@@ -1689,6 +2337,17 @@ async function ensureDemoData() {
 		version_note: '草稿版',
 		current_version: 1,
 		linked_signal: signal2.id,
+		signal_title_snapshot: signal2.signal_title,
+		signal_url_snapshot: signal2.signal_url,
+		topic_anchor_type: signal2.anchor_type,
+		topic_angle: signal2.topic_angle,
+		topic_product_relation: signal2.product_relation,
+		topic_reader_takeaway: signal2.reader_takeaway,
+		topic_publish_reason: signal2.publish_reason,
+		topic_content_form: signal2.content_form,
+		topic_audience_type: signal2.audience_type,
+		topic_title_direction: signal2.title_direction,
+		topic_note_snapshot: signal2.topic_note,
 		source_name_snapshot: source2.name,
 		source_url_snapshot: 'https://arxiv.org/',
 		source_note_snapshot: source2.note,
@@ -1698,11 +2357,19 @@ async function ensureDemoData() {
 	await upsertItemById(COLLECTIONS.signals, signal1.id, {
 		linked_content: content1.id,
 		status: STATUS.adopted,
+		topic_status: TOPIC_STATUS.converted,
+		converted_at: new Date().toISOString(),
+		converted_by: state.creatorUserId,
+		converted_content_snapshot: `${content1.code} | ${content1.title}`,
 	});
 
 	await upsertItemById(COLLECTIONS.signals, signal2.id, {
 		linked_content: content2.id,
 		status: STATUS.adopted,
+		topic_status: TOPIC_STATUS.converted,
+		converted_at: new Date().toISOString(),
+		converted_by: state.creatorUserId,
+		converted_content_snapshot: `${content2.code} | ${content2.title}`,
 	});
 
 	await upsertItemById(COLLECTIONS.sources, source1.id, { last_used_content: content1.id });
@@ -2057,6 +2724,31 @@ async function ensurePanel(dashboardId, panel) {
 	return created.data.id;
 }
 
+async function ensurePreset(payload) {
+	const existing = await findPreset(payload.collection, payload.bookmark ?? null);
+
+	const body = {
+		bookmark: payload.bookmark ?? null,
+		collection: payload.collection,
+		layout: payload.layout ?? 'tabular',
+		layout_query: payload.layout_query ?? null,
+		layout_options: payload.layout_options ?? null,
+		filter: payload.filter ?? null,
+		icon: payload.icon ?? 'bookmark',
+		color: payload.color ?? null,
+		role: null,
+		user: null,
+	};
+
+	if (existing) {
+		await api('PATCH', `/presets/${existing.id}`, { body });
+		return existing.id;
+	}
+
+	const created = await api('POST', '/presets', { body });
+	return created.data.id;
+}
+
 async function findDashboardByName(name) {
 	const response = await api('GET', '/dashboards', {
 		query: { fields: ['id', 'name', 'icon', 'note', 'color'], limit: -1 },
@@ -2072,6 +2764,19 @@ async function findPanel(dashboardId, panelName) {
 
 	return (
 		response?.data?.find((panel) => normalizeId(panel?.dashboard) === dashboardId && panel?.name === panelName) ?? null
+	);
+}
+
+async function findPreset(collection, bookmark) {
+	const response = await api('GET', '/presets', {
+		query: { fields: ['id', 'collection', 'bookmark', 'role', 'user'], limit: -1 },
+	});
+
+	return (
+		response?.data?.find((preset) => {
+			const presetBookmark = preset?.bookmark ?? null;
+			return preset?.collection === collection && presetBookmark === bookmark && !preset?.role && !preset?.user;
+		}) ?? null
 	);
 }
 

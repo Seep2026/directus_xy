@@ -36,11 +36,18 @@ const NEW_MEDIA_LOW_IMPORTANCE_FIELDS = new Set([
 	'updated_at',
 	'current_version',
 	'version_no',
+	'converted_at',
 ]);
 
 const NEW_MEDIA_MEDIUM_IMPORTANCE_FIELDS = new Set([
 	'status',
+	'topic_status',
 	'signal_type',
+	'anchor_type',
+	'product_relation',
+	'content_form',
+	'audience_type',
+	'publish_reason',
 	'content_type',
 	'content_goal',
 	'channel_type',
@@ -68,6 +75,12 @@ const NEW_MEDIA_GROW_WEIGHTS: Record<NewMediaColumnImportance, number> = {
 const GENERIC_COMPACT_WIDTH: Record<string, number> = {
 	id: 72,
 	status: 120,
+	topic_status: 120,
+	anchor_type: 136,
+	product_relation: 156,
+	content_form: 132,
+	audience_type: 136,
+	publish_reason: 156,
 	version_no: 96,
 	current_version: 96,
 	is_final: 84,
@@ -92,7 +105,10 @@ const NEW_MEDIA_COLUMN_PRESETS: Record<
 > = {
 	nm_signals: {
 		wide: {
-			signal_title: 360,
+			signal_title: 340,
+			topic_angle: 340,
+			reader_takeaway: 320,
+			title_direction: 320,
 			source_summary: 300,
 			xyunapi_relevance: 300,
 			why_it_matters: 280,
@@ -101,14 +117,26 @@ const NEW_MEDIA_COLUMN_PRESETS: Record<
 		},
 		compact: {
 			id: 72,
-			status: 120,
+			status: 108,
+			topic_status: 120,
+			anchor_type: 132,
+			product_relation: 150,
+			content_form: 130,
 			signal_type: 118,
 			suggested_direction: 112,
 			source_ref: 132,
 			submitted_by: 132,
 			linked_content: 140,
 		},
-		multiline: new Set(['signal_title', 'source_summary', 'xyunapi_relevance', 'why_it_matters']),
+		multiline: new Set([
+			'signal_title',
+			'topic_angle',
+			'reader_takeaway',
+			'title_direction',
+			'source_summary',
+			'xyunapi_relevance',
+			'why_it_matters',
+		]),
 	},
 	nm_content_cards: {
 		wide: {
@@ -177,7 +205,15 @@ const NEW_MEDIA_COLUMN_PRESETS: Record<
 };
 
 const NEW_MEDIA_DEFAULT_FIELDS: Record<string, string[]> = {
-	nm_signals: ['status', 'signal_type', 'signal_title', 'source_summary', 'source_ref', 'submitted_by'],
+	nm_signals: [
+		'topic_status',
+		'anchor_type',
+		'product_relation',
+		'content_form',
+		'signal_title',
+		'source_summary',
+		'source_ref',
+	],
 	nm_content_cards: ['status', 'title', 'summary', 'content_type', 'channel_type', 'content_goal', 'owner'],
 	nm_sources: ['name', 'source_type', 'source_link', 'note', 'quality_rating'],
 	nm_assets: ['name', 'asset_type', 'content_card', 'note', 'is_final'],
@@ -185,7 +221,7 @@ const NEW_MEDIA_DEFAULT_FIELDS: Record<string, string[]> = {
 };
 
 const NEW_MEDIA_DEFAULT_FIELDS_MEDIUM: Record<string, string[]> = {
-	nm_signals: ['status', 'signal_type', 'signal_title', 'source_summary', 'source_ref'],
+	nm_signals: ['topic_status', 'anchor_type', 'product_relation', 'signal_title', 'source_summary', 'source_ref'],
 	nm_content_cards: ['status', 'title', 'summary', 'content_type', 'content_goal', 'owner'],
 	nm_sources: ['name', 'source_type', 'quality_rating', 'note'],
 	nm_assets: ['name', 'asset_type', 'content_card', 'is_final'],
@@ -193,7 +229,7 @@ const NEW_MEDIA_DEFAULT_FIELDS_MEDIUM: Record<string, string[]> = {
 };
 
 const NEW_MEDIA_DEFAULT_FIELDS_COMPACT: Record<string, string[]> = {
-	nm_signals: ['status', 'signal_type', 'signal_title', 'source_ref'],
+	nm_signals: ['topic_status', 'anchor_type', 'signal_title', 'source_ref'],
 	nm_content_cards: ['status', 'title', 'summary', 'content_type', 'owner'],
 	nm_sources: ['name', 'source_type', 'quality_rating'],
 	nm_assets: ['name', 'asset_type', 'is_final'],
@@ -203,6 +239,12 @@ const NEW_MEDIA_DEFAULT_FIELDS_COMPACT: Record<string, string[]> = {
 const NEW_MEDIA_MIN_COLUMN_WIDTH: Record<string, number> = {
 	id: 64,
 	status: 96,
+	topic_status: 102,
+	anchor_type: 118,
+	product_relation: 132,
+	content_form: 118,
+	audience_type: 118,
+	publish_reason: 132,
 	signal_type: 98,
 	content_type: 96,
 	content_goal: 96,
@@ -225,6 +267,9 @@ const NEW_MEDIA_MIN_COLUMN_WIDTH: Record<string, number> = {
 	title: 220,
 	summary: 180,
 	source_summary: 180,
+	topic_angle: 220,
+	reader_takeaway: 200,
+	title_direction: 200,
 	change_summary: 180,
 	note: 160,
 };
@@ -232,6 +277,12 @@ const NEW_MEDIA_MIN_COLUMN_WIDTH: Record<string, number> = {
 const NEW_MEDIA_FALLBACK_MIN_COLUMN_WIDTH: Record<string, number> = {
 	id: 56,
 	status: 84,
+	topic_status: 92,
+	anchor_type: 106,
+	product_relation: 118,
+	content_form: 106,
+	audience_type: 106,
+	publish_reason: 118,
 	signal_type: 88,
 	content_type: 88,
 	content_goal: 88,
@@ -254,6 +305,9 @@ const NEW_MEDIA_FALLBACK_MIN_COLUMN_WIDTH: Record<string, number> = {
 	title: 180,
 	summary: 140,
 	source_summary: 140,
+	topic_angle: 170,
+	reader_takeaway: 156,
+	title_direction: 156,
 	change_summary: 140,
 	note: 128,
 };
