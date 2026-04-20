@@ -15,6 +15,7 @@ pnpm install
 
 ```bash
 cd api
+cp env.new-media.example .env.new-media
 cp .env.new-media .env
 mkdir -p data extensions
 mkdir -p uploads
@@ -25,6 +26,7 @@ pnpm cli bootstrap
 
 - 会自动创建系统表与默认管理员
 - 默认管理员账号来自 `api/.env.new-media`
+- `./start_new_media.sh` 也会在缺失时自动从 `api/env.new-media.example` 生成 `api/.env.new-media`
 
 ## 4. 启动开发环境
 
@@ -144,7 +146,7 @@ cd .. && pnpm new-media:init
 - 初始化脚本：`scripts/new-media/init.mjs`
 - 自定义 i18n 文案包：`scripts/new-media/i18n/zh-CN.json`
 - 一键命令：`package.json` (`new-media:init`)
-- 本地环境模板：`api/.env.new-media`
+- 本地环境模板：`api/env.new-media.example`
 - 一键启动脚本：`start_new_media.sh`
 
 ## 9. 1.1 重点变化

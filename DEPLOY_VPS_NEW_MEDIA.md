@@ -54,6 +54,7 @@ git pull origin main
 
 ```bash
 cd /srv/directus_xy/api
+cp env.new-media.example .env.new-media
 cp .env.new-media .env
 ```
 

@@ -10,6 +10,9 @@ API_LOG="$LOG_DIR/api.log"
 APP_LOG="$LOG_DIR/app.log"
 DB_FILE="$API_DIR/data/new-media.db"
 TMP_DIR="$ROOT_DIR/.run/tmp"
+ENV_TEMPLATE_FILE="$API_DIR/env.new-media.example"
+ENV_NEW_MEDIA_FILE="$API_DIR/.env.new-media"
+ENV_FILE="$API_DIR/.env"
 
 INIT_ONLY=0
 DETACH=0
@@ -24,8 +27,22 @@ done
 
 mkdir -p "$LOG_DIR" "$TMP_DIR" "$API_DIR/data" "$API_DIR/extensions" "$API_DIR/uploads"
 
-if [[ ! -f "$API_DIR/.env" ]]; then
-	cp "$API_DIR/.env.new-media" "$API_DIR/.env"
+if [[ ! -f "$ENV_NEW_MEDIA_FILE" ]]; then
+	if [[ -f "$ENV_TEMPLATE_FILE" ]]; then
+		cp "$ENV_TEMPLATE_FILE" "$ENV_NEW_MEDIA_FILE"
+		echo "[new-media] 未检测到 api/.env.new-media，已从模板自动生成。"
+		echo "[new-media] 如用于生产环境，请先编辑 api/.env.new-media 后再启动。"
+	else
+		echo "[new-media] 缺少环境文件与模板："
+		echo "  - $ENV_NEW_MEDIA_FILE"
+		echo "  - $ENV_TEMPLATE_FILE"
+		echo "[new-media] 请先创建其中一个文件后重试。"
+		exit 1
+	fi
+fi
+
+if [[ ! -f "$ENV_FILE" ]]; then
+	cp "$ENV_NEW_MEDIA_FILE" "$ENV_FILE"
 fi
 
 if [[ ! -f "$DB_FILE" ]]; then
